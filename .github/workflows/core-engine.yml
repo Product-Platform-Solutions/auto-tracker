@@ -1,0 +1,42 @@
+name: Auto Tracker Core Engine
+
+on:
+  repository_dispatch:
+    types: [track-event]
+
+jobs:
+  process-event:
+    name: Process and Route Event
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Parse Event
+        id: parse
+        run: |
+          echo "event_type=${{ github.event.client_payload.event_type }}" >> $GITHUB_OUTPUT
+          echo "branch=${{ github.event.client_payload.branch }}" >> $GITHUB_OUTPUT
+          echo "commit=${{ github.event.client_payload.commit }}" >> $GITHUB_OUTPUT
+          echo "author=${{ github.event.client_payload.author }}" >> $GITHUB_OUTPUT
+          echo "repo=${{ github.event.client_payload.repo }}" >> $GITHUB_OUTPUT
+
+      - name: Route to n8n
+        run: |
+          curl -s -X POST "${{ secrets.N8N_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "event_type": "${{ steps.parse.outputs.event_type }}",
+              "branch": "${{ steps.parse.outputs.branch }}",
+              "commit": "${{ steps.parse.outputs.commit }}",
+              "author": "${{ steps.parse.outputs.author }}",
+              "repo": "${{ steps.parse.outputs.repo }}",
+              "timestamp": "${{ github.event.client_payload.timestamp }}"
+            }'
+          echo "Event routed to n8n"

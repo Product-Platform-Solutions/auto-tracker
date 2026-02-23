@@ -1,0 +1,32 @@
+# auto-tracker configuration
+# Copy this file to your project and customize
+
+tracker:
+  # Options: github-issues, jira, azure-devops, trello, linear, asana, notion, monday, clickup
+  adapter: github-issues
+  
+  # Your project details
+  project_id: ""
+  repo: ""
+
+# AI enrichment via Claude API
+ai:
+  enabled: true
+  features:
+    - generate_description
+    - create_acceptance_criteria
+    - suggest_subtasks
+    - estimate_complexity
+
+# Events to track
+events:
+  - push
+  - pull_request
+  - workflow_run
+
+# Branch to ticket mapping
+branch_patterns:
+  feature: "feat/*"
+  bugfix: "fix/*"
+  hotfix: "hotfix/*"
+  chore: "chore/*"
