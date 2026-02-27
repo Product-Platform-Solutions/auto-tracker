@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { syncIssueToProject } from './github-projects';
 
 const GITHUB_API = 'https://api.github.com';
 
@@ -20,7 +21,6 @@ export async function createOrUpdateIssue(
     'Content-Type': 'application/json'
   };
 
-  // Build full issue body
   const issueBody = `## ${ticket.title}
 
 **Type:** ${ticket.type}
@@ -48,8 +48,10 @@ ${ticket.acceptanceCriteria.map((c: string) => `- [ ] ${c}`).join('\n')}
     );
 
     const existing = searchRes.data.items[0];
+    let issueNumber: number;
 
     if (existing && status !== 'in_progress') {
+      // Update existing issue with comment
       await axios.post(
         `${GITHUB_API}/repos/${repo}/issues/${existing.number}/comments`,
         {
@@ -57,9 +59,11 @@ ${ticket.acceptanceCriteria.map((c: string) => `- [ ] ${c}`).join('\n')}
         },
         { headers }
       );
-      console.log(`✅ Updated issue #${existing.number}`);
+      issueNumber = existing.number;
+      console.log(`✅ Updated issue #${issueNumber}`);
     } else if (!existing) {
-      await axios.post(
+      // Create new issue
+      const createRes = await axios.post(
         `${GITHUB_API}/repos/${repo}/issues`,
         {
           title: ticket.ticketId ? `[${ticket.ticketId}] ${ticket.title}` : ticket.title,
@@ -68,8 +72,15 @@ ${ticket.acceptanceCriteria.map((c: string) => `- [ ] ${c}`).join('\n')}
         },
         { headers }
       );
-      console.log(`✅ Created new issue: ${ticket.title}`);
+      issueNumber = createRes.data.number;
+      console.log(`✅ Created new issue #${issueNumber}: ${ticket.title}`);
+    } else {
+      issueNumber = existing.number;
     }
+
+    // Sync to GitHub Projects board
+    await syncIssueToProject(repo, issueNumber, status, ticket.priority, token);
+
   } catch (error: any) {
     console.error('GitHub adapter error:', error.message);
   }
